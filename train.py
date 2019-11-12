@@ -55,7 +55,7 @@ if __name__ == '__main__':
   median = np.median(sum(frequencies.values(), []))
   
   for classid in range(0, 11+1):
-    weights.append(median/np.sum(frequencies[i]))
+    weights.append(median/np.sum(frequencies[classid]))
 
   criterion = nn.CrossEntropyLoss(weight=torch.tensor(weights))
   optimizer = torch.optim.Adam(net.parameters(), lr=1e-6, weight_decay=0.001)
