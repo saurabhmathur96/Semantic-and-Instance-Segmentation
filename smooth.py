@@ -51,26 +51,27 @@ def smooth(image, mask):
     map = colormap[map, :] 
     return map.reshape(image.shape)[:, :, 0]
 
-parser = argparse.ArgumentParser()
-parser.add_argument("image", help="path/to/image")
-parser.add_argument("mask", help="path/to/mask")
-parser.add_argument("output", help="path/to/output")
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("image", help="path/to/image")
+    parser.add_argument("mask", help="path/to/mask")
+    parser.add_argument("output", help="path/to/output")
 
-args = parser.parse_args()
-image = np.array(Image.open(args.image), dtype=np.uint8)
-mask = np.array(Image.open(args.mask), dtype=np.uint8)
+    args = parser.parse_args()
+    image = np.array(Image.open(args.image), dtype=np.uint8)
+    mask = np.array(Image.open(args.mask), dtype=np.uint8)
 
-output = smooth(image, mask)
-import matplotlib.pyplot as plt
+    output = smooth(image, mask)
+    import matplotlib.pyplot as plt
 
 
-plt.subplot(121)
-plt.axis("off")
-plt.title("SegNet Output")
-plt.imshow(mask)
-plt.subplot(122)
-plt.axis("off")
-plt.title("After DenseCRF post-processing")
-plt.imshow(output)
-plt.show()
-Image.fromarray(output).save(args.output)
+    plt.subplot(121)
+    plt.axis("off")
+    plt.title("SegNet Output")
+    plt.imshow(mask)
+    plt.subplot(122)
+    plt.axis("off")
+    plt.title("After DenseCRF post-processing")
+    plt.imshow(output)
+    plt.show()
+    Image.fromarray(output).save(args.output)

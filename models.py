@@ -84,8 +84,9 @@ class Decoder(nn.Module):
       DecoderBlock(2, 128, 64, conv_args, pooling_args),
       DecoderBlock(2, 64, output_size, conv_args, pooling_args),
     ])
+    # remove last ReLU
+    self.blocks[-1].conv_block[-1] = self.blocks[-1].conv_block[-1][:2] 
     self.block_count = len(self.blocks)
-  
   def forward(self, x, pooling_params):
     for params, block in zip(pooling_params, self.blocks):
       x = block(x, *params)
@@ -106,6 +107,7 @@ class SegNet(nn.Module):
       
     # Instantiate decoder
     self.decoder = Decoder(class_count)
+
   def forward(self, x):
     encoded, pooling_params = self.encoder(x)
     decoded = self.decoder(encoded, pooling_params[::-1])
