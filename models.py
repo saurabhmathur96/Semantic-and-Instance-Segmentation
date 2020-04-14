@@ -91,6 +91,20 @@ class Decoder(nn.Module):
     for params, block in zip(pooling_params, self.blocks):
       x = block(x, *params)
     return x
+
+class BayesianDecoder(Decoder):
+  def __init__(self, output_size, dropout_p=0.5):
+    super(BayesianDecoder, self).__init__(output_size)
+    self.p = dropout_p
+
+  def forward(self, x, pooling_params):
+    for i, (params, block) in enumerate(zip(pooling_params, self.blocks)):
+      x = block(x, *params)
+      if i == len(self.blocks)-1:
+        continue
+      else:
+        x = F.dropout(x, p=dropout_p, training=True)
+    return x
     
 
 def init_weights(m):
@@ -112,5 +126,24 @@ class SegNet(nn.Module):
     encoded, pooling_params = self.encoder(x)
     decoded = self.decoder(encoded, pooling_params[::-1])
     return decoded
+ 
+    
+class BasyesianSegNet(nn.Module):
+  def __init__(self, input_size, class_count, dropout_p=0.5):
+    super(BayesianSegNet, self).__init__()
+    
+    # Instantiate encoder
+    self.encoder = Encoder(input_size)
+    
+    # Instantiate decoder
+    self.decoder = BayesisanDecoder(class_count, dropout_p)
+
+  def forward(self, x):
+    encoded, pooling_params = self.encoder(x)
+    decoded = self.decoder(encoded, pooling_params[::-1])
+    return decoded
+
+  def predict(self, x, T=40):
+    torch.stack([self(x) for _ in range(T)])
  
     
