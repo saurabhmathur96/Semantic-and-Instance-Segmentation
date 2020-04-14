@@ -103,7 +103,7 @@ class BayesianDecoder(Decoder):
       if i == len(self.blocks)-1:
         continue
       else:
-        x = F.dropout(x, p=dropout_p, training=True)
+        x = F.dropout(x, p=self.p, training=True)
     return x
     
 
