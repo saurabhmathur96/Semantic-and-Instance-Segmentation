@@ -128,15 +128,15 @@ class SegNet(nn.Module):
     return decoded
  
     
-class BasyesianSegNet(nn.Module):
-  def __init__(self, input_size, class_count, dropout_p=0.5):
+class BayesianSegNet(nn.Module):
+  def __init__(self, input_size, class_count, dropout_p):
     super(BayesianSegNet, self).__init__()
     
     # Instantiate encoder
     self.encoder = Encoder(input_size)
     
     # Instantiate decoder
-    self.decoder = BayesisanDecoder(class_count, dropout_p)
+    self.decoder = BayesianDecoder(class_count, dropout_p)
 
   def forward(self, x):
     encoded, pooling_params = self.encoder(x)
