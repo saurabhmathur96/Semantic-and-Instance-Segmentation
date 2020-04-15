@@ -9,7 +9,7 @@ from tqdm.auto import trange, tqdm
 
 
 
-def train_epoch(train_loader, net, criterion, optimizer, scheduler, device='cuda'):
+def train_epoch(train_loader, net, criterion, optimizer, device='cuda'):
   net.to(device)
   train_losses = []
   for data, target in tqdm(train_loader):

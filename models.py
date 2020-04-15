@@ -3,6 +3,8 @@ from torch import nn
 import torch.nn.functional as F
 from torchvision import models
 
+
+
 def Conv2DLayer(input_size, output_size, kernel_size = 3, stride = 1, padding = 1):
   return nn.Sequential(
     nn.Conv2d(input_size, output_size, kernel_size = kernel_size, stride = stride, padding = padding),
@@ -32,7 +34,25 @@ class EncoderBlock(nn.Module):
       # layer[0] of conv_block[i] is Conv2D layer
       self.conv_block[i][0].weight.data = layers[i].weight.data
       self.conv_block[i][0].bias.data = layers[i].bias.data
-      
+
+class DecoderBlock(nn.Module):
+  def __init__(self, layer_count, input_size, output_size, conv_kwargs, pooling_kwargs):
+    super(DecoderBlock, self).__init__()
+    
+    self.unpool = nn.MaxUnpool2d(**pooling_kwargs)
+    
+    self.layer_count = layer_count # # of Conv2DLayers
+    self.conv_block = nn.Sequential(
+        Conv2DLayer(input_size, output_size, **conv_kwargs),
+        *[Conv2DLayer(output_size, output_size, **conv_kwargs) for i in range(layer_count-1)]
+    )
+    
+  def forward(self, x, indices, output_shape):
+    unpooled = self.unpool(output_size=output_shape, indices=indices, input=x)
+    return self.conv_block(unpooled)
+
+
+
 class Encoder(nn.Module):
   def __init__(self, input_size):
     super(Encoder, self).__init__()
@@ -55,21 +75,8 @@ class Encoder(nn.Module):
     return x, pooling_params
 
 
-class DecoderBlock(nn.Module):
-  def __init__(self, layer_count, input_size, output_size, conv_kwargs, pooling_kwargs):
-    super(DecoderBlock, self).__init__()
     
-    self.unpool = nn.MaxUnpool2d(**pooling_kwargs)
-    
-    self.layer_count = layer_count # # of Conv2DLayers
-    self.conv_block = nn.Sequential(
-        Conv2DLayer(input_size, output_size, **conv_kwargs),
-        *[Conv2DLayer(output_size, output_size, **conv_kwargs) for i in range(layer_count-1)]
-    )
-    
-  def forward(self, x, indices, output_shape):
-    unpooled = self.unpool(output_size=output_shape, indices=indices, input=x)
-    return self.conv_block(unpooled)
+
 
 class Decoder(nn.Module):
   def __init__(self, output_size):
@@ -92,25 +99,42 @@ class Decoder(nn.Module):
       x = block(x, *params)
     return x
 
+
+
+class BayesianEncoder(Encoder):
+  def __init__(self, output_size, dropout_p=0.5):
+    super(BayesianEncoder, self).__init__(output_size)
+    self.p = dropout_p
+
+  def forward(self, x):
+    pooling_params = []
+    for i, block in enumerate(self.blocks[:2]):
+      x, indices, projected_size = block(x)
+      pooling_params.append((indices, projected_size))
+
+    for i, block in enumerate(self.blocks[2:]):
+        x, indices, projected_size = block(x)
+        x = F.dropout(x, p=self.p, training=True)
+        pooling_params.append((indices, projected_size))
+      
+    return x, pooling_params
+
+
 class BayesianDecoder(Decoder):
   def __init__(self, output_size, dropout_p=0.5):
     super(BayesianDecoder, self).__init__(output_size)
     self.p = dropout_p
 
   def forward(self, x, pooling_params):
-    for i, (params, block) in enumerate(zip(pooling_params, self.blocks)):
+    for i, (params, block) in enumerate(zip(pooling_params[:-2], self.blocks[:-2])):
       x = block(x, *params)
-      if i == len(self.blocks)-1:
-        continue
-      else:
-        x = F.dropout(x, p=self.p, training=True)
-    return x
+      x = F.dropout(x, p=self.p, training=True)
     
+    for i, (params, block) in enumerate(zip(pooling_params[-2:], self.blocks[-2:])):
+      x = block(x, *params)
+    return x
 
-def init_weights(m):
-  if type(m) == nn.Conv2d:
-    torch.nn.init.xavier_uniform_(m.weight)
-    m.bias.data.fill_(0.01)
+
 
 class SegNet(nn.Module):
   def __init__(self, input_size, class_count):
@@ -126,14 +150,14 @@ class SegNet(nn.Module):
     encoded, pooling_params = self.encoder(x)
     decoded = self.decoder(encoded, pooling_params[::-1])
     return decoded
- 
-    
+
+
 class BayesianSegNet(nn.Module):
   def __init__(self, input_size, class_count, dropout_p):
     super(BayesianSegNet, self).__init__()
     
     # Instantiate encoder
-    self.encoder = Encoder(input_size)
+    self.encoder = BayesianEncoder(input_size, dropout_p)
     
     # Instantiate decoder
     self.decoder = BayesianDecoder(class_count, dropout_p)
@@ -144,6 +168,5 @@ class BayesianSegNet(nn.Module):
     return decoded
 
   def predict(self, x, T=40):
-    torch.stack([self(x) for _ in range(T)])
+    return torch.mean(torch.stack([torch.softmax(self(x), dim=1).cpu() for _ in range(T)]), axis=0)
  
-    
