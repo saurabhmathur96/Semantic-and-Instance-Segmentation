@@ -91,8 +91,8 @@ class Decoder(nn.Module):
       DecoderBlock(2, 128, 64, conv_args, pooling_args),
       DecoderBlock(2, 64, output_size, conv_args, pooling_args),
     ])
-    # remove last ReLU
-    self.blocks[-1].conv_block[-1] = self.blocks[-1].conv_block[-1][:2] 
+    # remove last ReLU and BN
+    self.blocks[-1].conv_block[-1] = self.blocks[-1].conv_block[-1][:1] 
     self.block_count = len(self.blocks)
   def forward(self, x, pooling_params):
     for params, block in zip(pooling_params, self.blocks):
@@ -170,3 +170,8 @@ class BayesianSegNet(nn.Module):
   def predict(self, x, T=40):
     return torch.mean(torch.stack([torch.softmax(self(x), dim=1).cpu() for _ in range(T)]), axis=0)
  
+
+def init_weights(m):
+  if type(m) == nn.Conv2d:
+    torch.nn.init.xavier_uniform_(m.weight)
+    m.bias.data.fill_(0.01)

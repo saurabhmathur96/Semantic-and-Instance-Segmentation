@@ -5,6 +5,11 @@ from csv import reader
 from PIL import Image
 import numpy as np
 import torch
+import torchvision.transforms as transforms
+
+normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+
 
 class CamVid11(VisionDataset):
   def __init__(self, root, split='train', transform=None, target_transform=None, transforms=None):
@@ -28,10 +33,15 @@ class CamVid11(VisionDataset):
     self.targets = targets
 
   def __getitem__(self, index):
+    
     image = Image.open(self.images[index]).convert('RGB')
+    image = Tensor(np.array(image)).float()
+    image = image.permute(2, 0, 1) / 255.
+    if self.transform is not None:
+      image = self.transform(image)
     target = Image.open(self.targets[index])
-
-    return Tensor(np.array(image)).float(), Tensor(np.array(target, int)).long()
+    target = Tensor(np.array(target, int)).long()
+    return image, target
 
 
   def __len__(self):
