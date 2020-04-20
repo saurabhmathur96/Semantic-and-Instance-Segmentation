@@ -3,6 +3,7 @@ import shutil
 import argparse
 
 import numpy as np
+from tqdm.auto import tqdm
 
 from psyphy.perturb.ocv import gaussian_blur
 from psyphy.perturb.pilie import brightness, color, contrast, sharpness
@@ -37,8 +38,8 @@ for param in params:
     param_path = path.join(dest, '%.4f' % param)
     makedirs(param_path, exist_ok=True)
     annot_path = path.join(dest, '%.4fannot' % param)
-    symlink(path.realpath(src+'annot/'), annot_path)
-    
-    for filename in listdir(src):
+    shutil.copytree(src+'annot/', annot_path)
+    shutil.copy(src+'.txt', param_path + '.txt')
+    for filename in tqdm(listdir(src)):
         rpath = f(path.join(src, filename), param)
         shutil.move(rpath, path.join(param_path, filename))
